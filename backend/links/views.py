@@ -88,23 +88,114 @@ class LinkListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class LinkDeleteView(APIView):
+class LinkDetailView(APIView):
     """
-    THE LINK DELETE VIEW
+    THE LINK DETAIL VIEW (RETRIEVE, UPDATE, & DELETE)
     
     Analogy:
-    Think of this View like a secure safety deposit shredder.
-    A user walks up to shred a document (Link) with a specific ID.
-    1. The clerk (IsAuthenticated) verifies who the user is.
-    2. The clerk queries the cabinet: Does this folder exist? If not, return "404 Not Found".
-    3. The clerk verifies ownership: Does this folder actually belong to you?
-       If link.user != request.user, the clerk rejects with a "403 Forbidden" error!
-    4. If everything matches, the clerk shreds the file (link.delete()) and returns "204 No Content"
-       confirming deletion.
+    Think of this View like a private, secure safety deposit locker cabinet.
+    Every locker (Link) has a unique ID number.
+    1. GET Request (Retrieve): Walk up, show your ID, and retrieve details for this specific folder (Locker).
+    2. PUT Request (Update): Walk up, show your ID, present a sheet of changes (new Title, URL, or Order),
+       the clerk validates the new values, and overwrites the active folder contents (Explicit ORM Update).
+    3. DELETE Request (Purge): Walk up, show your ID, instruct the clerk to shred the folder,
+       the clerk checks ownership, and wipes it completely from the cabinet (Explicit link.delete()).
     """
     
-    # We protect this view so only logged-in (authenticated) users can execute deletions.
+    # We protect this view so only logged-in (authenticated) users can view, edit, or delete links.
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        """
+        Handles incoming GET requests to view the details of a single specific link.
+        """
+        # Step 1: Query the database to find the link by its primary key (ID)
+        link = Link.objects.filter(id=pk).first()
+
+        # Step 2: If the link is None (not found), return a 404 response immediately
+        if link is None:
+            return Response(
+                {"error": "Link not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Step 3: Check ownership. A user must not be allowed to view details of links they do not own.
+        if link.user != request.user:
+            return Response(
+                {"error": "You do not have permission to view this link."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Step 4: Serialize the object and return it with status 200 OK
+        serializer = LinkSerializer(link)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        """
+        Handles incoming PUT requests to update a specific link's fields (title, url, order, is_active).
+        """
+        # Step 1: Query the database to find the link by its primary key (ID)
+        link = Link.objects.filter(id=pk).first()
+
+        # Step 2: If the link is None (not found), return a 404 response immediately
+        if link is None:
+            return Response(
+                {"error": "Link not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Step 3: Check ownership. Ensure only the owner can modify their links!
+        if link.user != request.user:
+            return Response(
+                {"error": "You do not have permission to update this link."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Step 4: Pull the incoming update values from the request body
+        title = request.data.get("title")
+        url = request.data.get("url")
+        order = request.data.get("order")
+        is_active = request.data.get("is_active")
+
+        # Step 5: Perform manual validation checks on each updated parameter
+        # If title is provided, ensure it is not just blank spaces
+        if title is not None:
+            if str(title).strip() == "":
+                return Response(
+                    {"error": "Title cannot be empty."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            link.title = title.strip()
+
+        # If url is provided, ensure it is not just blank spaces
+        if url is not None:
+            if str(url).strip() == "":
+                return Response(
+                    {"error": "URL cannot be empty."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            link.url = url.strip()
+
+        # If order is provided, attempt to convert it safely to a positive integer
+        if order is not None:
+            try:
+                link.order = int(order)
+            except ValueError:
+                return Response(
+                    {"error": "Display order must be a valid whole number."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # If active visibility toggle is provided, convert it safely to a boolean
+        if is_active is not None:
+            link.is_active = bool(is_active)
+
+        # Step 6: Explicitly save the updated model instance to the SQLite database
+        link.save()
+
+        # Step 7: Serialize the updated link record and return it along with status 200 OK
+        serializer = LinkSerializer(link)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
         """
@@ -121,7 +212,6 @@ class LinkDeleteView(APIView):
             )
 
         # Step 3: Check ownership. If the owner of the link is not the logged-in user, reject with 403 Forbidden!
-        # This prevents unauthorized users from deleting another user's social links.
         if link.user != request.user:
             return Response(
                 {"error": "You do not have permission to delete this link."},
@@ -132,8 +222,8 @@ class LinkDeleteView(APIView):
         link.delete()
 
         # Step 5: Return an empty Response and a HTTP 204 No Content status code.
-        # This signals to the Next.js frontend that the deletion succeeded and no response body is needed.
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 
