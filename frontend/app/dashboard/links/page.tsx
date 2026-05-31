@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardWrapper from '@/components/dashboard/DashboardWrapper';
-import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2, Pencil } from 'lucide-react';
+import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2, Pencil, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
-import { getLinksAction, deleteLinkAction } from '@/app/actions/links/links';
+import { getLinksAction, deleteLinkAction, reorderLinksAction } from '@/app/actions/links/links';
 import CreateLinkForm from '@/components/dashboard/CreateLinkForm';
 import EditLinkForm from '@/components/dashboard/EditLinkForm';
 
@@ -42,6 +42,56 @@ export default function DashboardLinksPage() {
 
   // Tracks which link ID is actively being edited inline (null means no link is being edited)
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Tracks which list index is actively being dragged (for HTML5 drag-and-drop sorting)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Triggered when the user starts dragging a card
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    // Set drop effect to move
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Triggered when a dragged card hovers over another card in the list
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault(); // Crucial to allow dropping!
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    // Optimistically swap position of items in the local state array immediately to prevent flickering!
+    const updatedLinks = [...links];
+    const draggedItem = updatedLinks[draggedIndex];
+    
+    // Remove the item from its old position and insert it at the new hovered index
+    updatedLinks.splice(draggedIndex, 1);
+    updatedLinks.splice(index, 0, draggedItem);
+    
+    setDraggedIndex(index);
+    setLinks(updatedLinks);
+  };
+
+  // Triggered when the user drops the card (completes the drag operation)
+  const handleDragEnd = async () => {
+    setDraggedIndex(null);
+
+    // Grab all link IDs in their final, newly rearranged order
+    const orderedIds = links.map((l) => l.id);
+
+    try {
+      // Dispatch the Server Action to update the ordering database rows behind the scenes!
+      const res = await reorderLinksAction(orderedIds);
+      if (res.success) {
+        toast.success("Links reordered successfully.");
+      } else {
+        toast.error(res.message || "Failed to save reordered list.");
+        // Rollback state by re-fetching from database if server saving failed
+        fetchUserLinks();
+      }
+    } catch (err) {
+      toast.error("Network error: failed to save display order.");
+      fetchUserLinks();
+    }
+  };
 
   // Asynchronous method to handshake with our Next.js Server Action to list links
   const fetchUserLinks = async () => {
@@ -194,7 +244,7 @@ export default function DashboardLinksPage() {
         {/* Links Grid List */}
         {links.length > 0 ? (
           <div className="space-y-4">
-            {links.map((link) => (
+            {links.map((link, index) => (
               editingId === link.id ? (
                 /* --- MODULAR INLINE EDIT FORM COMPONENT --- */
                 <EditLinkForm
@@ -211,14 +261,27 @@ export default function DashboardLinksPage() {
                   onCancel={handleEditCancel}
                 />
               ) : (
-                /* --- DEFAULT SOCIAL CARD RENDERING --- */
+                /* --- DEFAULT SOCIAL CARD RENDERING WITH NATIVE DRAG & DROP --- */
                 <div 
-                  key={link.id} 
-                  className="group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+                  key={link.id}
+                  draggable={editingId === null}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 select-none ${
+                    draggedIndex === index ? 'opacity-40 border-dashed border-zinc-400 bg-zinc-100/50' : ''
+                  } ${editingId === null ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    {/* Left Side: Drag/Icon Placeholder */}
-                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Left Side: Drag Grip Handle Icon */}
+                    {editingId === null && (
+                      <div className="text-zinc-400 group-hover:text-zinc-600 transition-colors cursor-grab active:cursor-grabbing shrink-0 pr-1" title="Drag to reorder">
+                        <GripVertical size={16} />
+                      </div>
+                    )}
+                    
+                    {/* Left Side: Icon Placeholder */}
+                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors shrink-0">
                       <Link2 size={18} />
                     </div>
                     
@@ -246,12 +309,8 @@ export default function DashboardLinksPage() {
                     </div>
                   </div>
 
-                  {/* Right Side: Order parameter, Edit Button, and Delete Button */}
+                  {/* Right Side: Edit Button and Delete Button (Order Badge is retired!) */}
                   <div className="flex items-center gap-2.5 shrink-0">
-                    <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800/80 px-2 py-1 rounded-lg">
-                      Order {link.order}
-                    </span>
-
                     {/* Inline Edit Button Trigger */}
                     <button
                       onClick={() => handleEditStart(link.id)}

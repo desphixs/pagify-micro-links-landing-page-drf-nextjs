@@ -225,5 +225,69 @@ class LinkDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class LinkReorderView(APIView):
+    """
+    THE LINK REORDER VIEW
+    
+    Analogy:
+    Think of this View like a card dealer reorganizing a hand of cards on a table.
+    The user hands the dealer a specific order sheet of card IDs (ordered_ids, e.g. [12, 10, 8]).
+    The dealer checks that all these cards actually belong to the user's hand.
+    If they do, the dealer updates the 'order' index of each card one by one in the database:
+    first ID gets order 0, second gets order 1, and so on.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Handles incoming POST requests to update the ordering of a list of user links.
+        Expects a JSON body: {"ordered_ids": [id1, id2, id3, ...]}
+        """
+        ordered_ids = request.data.get("ordered_ids")
+
+        # Step 1: Validate that ordered_ids is provided and is a valid list
+        if not isinstance(ordered_ids, list):
+            return Response(
+                {"error": "A list of ordered link IDs is required under the 'ordered_ids' key."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Step 2: Fetch all links belonging to the logged-in user to verify ownership
+        user_links = Link.objects.filter(user=request.user)
+        user_link_ids = set(user_links.values_list("id", flat=True))
+
+        # Step 3: Loop through each ID to ensure it is valid and belongs to the user
+        for link_id in ordered_ids:
+            try:
+                # Ensure the ID is a valid integer
+                parsed_id = int(link_id)
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": f"Invalid link ID format: {link_id}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Security Check: Ensure the link belongs to this user!
+            if parsed_id not in user_link_ids:
+                return Response(
+                    {"error": f"Link with ID {parsed_id} does not exist or does not belong to your account."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        # Step 4: Perform the explicit reordering updates line-by-line in the database
+        updated_links = []
+        for index, link_id in enumerate(ordered_ids):
+            # Fetch the link instance and set its order attribute to match its index in the sorted list
+            link = user_links.get(id=int(link_id))
+            link.order = index
+            link.save() # Commit the new display order to the SQLite database
+            updated_links.append(link)
+
+        # Step 5: Serialize the reordered links and return them with 200 OK status
+        serializer = LinkSerializer(updated_links, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
 
 

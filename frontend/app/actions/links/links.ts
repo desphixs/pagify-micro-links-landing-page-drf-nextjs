@@ -172,5 +172,44 @@ export async function updateLinkAction(
     }
 }
 
+/**
+ * REORDER USER LINKS ACTION
+ * 
+ * Secure courier service that carries the reordered array of link IDs to the Django reordering view.
+ * This updates their display orders in the database.
+ */
+export async function reorderLinksAction(orderedIds: number[]) {
+    try {
+        const bodyPayload = {
+            ordered_ids: orderedIds,
+        };
+
+        // Dispatch a secure POST request to the reorder endpoint: `/links/reorder/`
+        const { ok, data } = await apiFetch('/links/reorder/', {
+            method: 'POST',
+            body: bodyPayload,
+        });
+
+        if (ok) {
+            return {
+                success: true,
+                message: "Links reordered successfully.",
+                links: data, // Return the newly ordered list of links
+            };
+        } else {
+            return {
+                success: false,
+                message: data.error || data.detail || data.message || "Failed to reorder links.",
+            };
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: `Network error: ${error.message || 'Failed to connect to backend server.'}`,
+        };
+    }
+}
+
+
 
 
