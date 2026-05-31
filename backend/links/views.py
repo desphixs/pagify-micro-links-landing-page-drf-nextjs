@@ -88,3 +88,52 @@ class LinkListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+class LinkDeleteView(APIView):
+    """
+    THE LINK DELETE VIEW
+    
+    Analogy:
+    Think of this View like a secure safety deposit shredder.
+    A user walks up to shred a document (Link) with a specific ID.
+    1. The clerk (IsAuthenticated) verifies who the user is.
+    2. The clerk queries the cabinet: Does this folder exist? If not, return "404 Not Found".
+    3. The clerk verifies ownership: Does this folder actually belong to you?
+       If link.user != request.user, the clerk rejects with a "403 Forbidden" error!
+    4. If everything matches, the clerk shreds the file (link.delete()) and returns "204 No Content"
+       confirming deletion.
+    """
+    
+    # We protect this view so only logged-in (authenticated) users can execute deletions.
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        """
+        Handles incoming DELETE requests to safely remove a specific link by its ID.
+        """
+        # Step 1: Query the database to find the link by its primary key (ID)
+        link = Link.objects.filter(id=pk).first()
+
+        # Step 2: If the link is None (not found), return a 404 response immediately
+        if link is None:
+            return Response(
+                {"error": "Link not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Step 3: Check ownership. If the owner of the link is not the logged-in user, reject with 403 Forbidden!
+        # This prevents unauthorized users from deleting another user's social links.
+        if link.user != request.user:
+            return Response(
+                {"error": "You do not have permission to delete this link."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Step 4: Call .delete() on the model instance to remove the row from the SQLite database
+        link.delete()
+
+        # Step 5: Return an empty Response and a HTTP 204 No Content status code.
+        # This signals to the Next.js frontend that the deletion succeeded and no response body is needed.
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+

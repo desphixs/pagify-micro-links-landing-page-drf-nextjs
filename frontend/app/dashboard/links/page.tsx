@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardWrapper from '@/components/dashboard/DashboardWrapper';
-import { Link2, ExternalLink, Plus, Sparkles, X } from 'lucide-react';
+import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getLinksAction } from '@/app/actions/links/links';
+import { getLinksAction, deleteLinkAction } from '@/app/actions/links/links';
 import CreateLinkForm from '@/components/dashboard/CreateLinkForm';
 
 // Define the shape of our Link data structure returned by the API
@@ -35,6 +35,9 @@ export default function DashboardLinksPage() {
   // Controls showing or hiding our modular creation form component
   const [showForm, setShowForm] = useState(false);
 
+  // Tracks which link ID is actively undergoing backend deletion (to show spinning trash cans!)
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   // Asynchronous method to handshake with our Next.js Server Action to list links
   const fetchUserLinks = async () => {
     try {
@@ -64,6 +67,36 @@ export default function DashboardLinksPage() {
     }
     loadData();
   }, []);
+
+  // Deletion handler to submit data securely using our Server Action
+  const handleDeleteLinkSubmit = async (linkId: number) => {
+    // Prevent double clicking or parallel deletes
+    if (deletingId !== null) return;
+    
+    // Set active loader on the chosen card
+    setDeletingId(linkId);
+
+    try {
+      // 1. Dispatch our secure Server Action to query Django's delete view
+      const res = await deleteLinkAction(linkId);
+
+      if (res.success) {
+        // 2. Remove the deleted link item from the React state list instantly!
+        setLinks((prev) => prev.filter((l) => l.id !== linkId));
+        // 3. Trigger a visual success toast alert
+        toast.success("Link deleted successfully.");
+      } else {
+        // 4. Trigger error notification
+        toast.error(res.message || "Failed to delete link.");
+      }
+    } catch (err: any) {
+      // 5. Catch network exceptions
+      toast.error("An unexpected network error occurred while deleting.");
+    } finally {
+      // 6. Reset deleting state loader
+      setDeletingId(null);
+    }
+  };
 
   // 1. Render a clean loading skeleton structure that mirrors our final list UI
   if (isLoading) {
@@ -173,7 +206,7 @@ export default function DashboardLinksPage() {
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-zinc-550 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 hover:underline truncate"
+                      className="text-xs text-zinc-555 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 hover:underline truncate"
                     >
                       <span className="truncate">{link.url}</span>
                       <ExternalLink size={10} className="shrink-0" />
@@ -181,11 +214,24 @@ export default function DashboardLinksPage() {
                   </div>
                 </div>
 
-                {/* Right Side: Order parameter */}
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                {/* Right Side: Order parameter and Delete Button */}
+                <div className="flex items-center gap-4 shrink-0">
+                  <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800/80 px-2 py-1 rounded-lg">
                     Order {link.order}
                   </span>
+
+                  <button
+                    onClick={() => handleDeleteLinkSubmit(link.id)}
+                    disabled={deletingId !== null}
+                    className="p-2 rounded-xl text-zinc-400 hover:text-red-650 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-all cursor-pointer disabled:opacity-50"
+                    title="Delete Link"
+                  >
+                    {deletingId === link.id ? (
+                      <Loader2 size={16} className="animate-spin text-red-600 dark:text-red-400" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
                 </div>
               </div>
             ))}
@@ -193,7 +239,7 @@ export default function DashboardLinksPage() {
         ) : (
           /* Empty state view styled in clean modern aesthetics */
           <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/5 p-12 text-center max-w-md mx-auto space-y-4 animate-in fade-in duration-300">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 flex items-center justify-center mx-auto border border-zinc-200 dark:border-zinc-800">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-505 flex items-center justify-center mx-auto border border-zinc-200 dark:border-zinc-800">
               <Link2 size={24} />
             </div>
             
@@ -220,5 +266,6 @@ export default function DashboardLinksPage() {
     </DashboardWrapper>
   );
 }
+
 
 

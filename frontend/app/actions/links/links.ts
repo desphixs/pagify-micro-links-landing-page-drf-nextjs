@@ -84,3 +84,38 @@ export async function createLinkAction(title: string, url: string, order?: numbe
     }
 }
 
+/**
+ * DELETE USER LINK ACTION
+ * 
+ * Analogy:
+ * Think of this action like a secure document shredding instruction.
+ * It takes the specific file ID (linkId) you want to remove, and runs to the
+ * Django backend via a secure DELETE request to instruct the database to safely purge it.
+ */
+export async function deleteLinkAction(linkId: number) {
+    try {
+        // Dispatch a secure DELETE request to our Django `/links/<pk>/delete/` endpoint.
+        const { ok, data } = await apiFetch(`/links/${linkId}/delete/`, {
+            method: 'DELETE',
+        });
+
+        if (ok) {
+            return {
+                success: true,
+                message: "Link deleted successfully.",
+            };
+        } else {
+            return {
+                success: false,
+                message: data.error || data.detail || data.message || "Failed to delete link.",
+            };
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: `Network error: ${error.message || 'Failed to connect to backend server.'}`,
+        };
+    }
+}
+
+
