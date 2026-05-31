@@ -38,3 +38,49 @@ export async function getLinksAction() {
         };
     }
 }
+
+/**
+ * CREATE USER LINK ACTION
+ * 
+ * Analogy:
+ * Think of this action like an express mailing service.
+ * It takes your new link parcel (Title and URL), packages it up safely as JSON,
+ * carries it securely to the Django backend via a POST request, and hands back
+ * the newly filed link object or any validation error responses.
+ */
+export async function createLinkAction(title: string, url: string, order?: number) {
+    try {
+        // Prepare the payload body to send to the Django backend
+        const bodyPayload = {
+            title,
+            url,
+            order: order !== undefined ? order : 0,
+        };
+
+        // Dispatch a secure POST request to the merged endpoint `/links/`
+        const { ok, data } = await apiFetch('/links/', {
+            method: 'POST',
+            body: bodyPayload,
+        });
+
+        if (ok) {
+            return {
+                success: true,
+                message: "Link created successfully.",
+                link: data, // Return the newly created link row object
+            };
+        } else {
+            return {
+                success: false,
+                // Check if the backend returned a custom manual validation check error
+                message: data.error || data.detail || data.message || "Failed to create link.",
+            };
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: `Network error: ${error.message || 'Failed to connect to backend server.'}`,
+        };
+    }
+}
+

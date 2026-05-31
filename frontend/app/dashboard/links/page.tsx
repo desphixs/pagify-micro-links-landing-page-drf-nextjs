@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardWrapper from '@/components/dashboard/DashboardWrapper';
-import { Link2, ExternalLink, ShieldAlert, Loader2, Plus, Sparkles } from 'lucide-react';
+import { Link2, ExternalLink, Plus, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getLinksAction } from '@/app/actions/links/links';
+import CreateLinkForm from '@/components/dashboard/CreateLinkForm';
 
 // Define the shape of our Link data structure returned by the API
 interface LinkData {
@@ -31,7 +32,10 @@ export default function DashboardLinksPage() {
   // State hook to manage loading transitions during data fetching
   const [isLoading, setIsLoading] = useState(true);
 
-  // Asynchronous method to handshake with our Next.js Server Action
+  // Controls showing or hiding our modular creation form component
+  const [showForm, setShowForm] = useState(false);
+
+  // Asynchronous method to handshake with our Next.js Server Action to list links
   const fetchUserLinks = async () => {
     try {
       // 1. Dispatch our secure server action to query Django's filtered links endpoint
@@ -79,8 +83,8 @@ export default function DashboardLinksPage() {
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
                   <div className="space-y-2">
-                    <div className="h-4 w-32 bg-zinc-250 dark:bg-zinc-800 rounded" />
-                    <div className="h-3 w-48 bg-zinc-150 dark:bg-zinc-850 rounded" />
+                    <div className="h-4 w-32 bg-zinc-250 dark:bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-3 w-48 bg-zinc-150 dark:bg-zinc-850 rounded animate-pulse" />
                   </div>
                 </div>
                 <div className="w-8 h-8 rounded-lg bg-zinc-200 dark:bg-zinc-800" />
@@ -107,15 +111,37 @@ export default function DashboardLinksPage() {
             </p>
           </div>
           
-          {/* Dashboard action button (minimalist style) */}
+          {/* Toggle form button styled inside premium design guidelines */}
           <button 
-            onClick={() => toast.info("Link creation will be enabled in Phase 2!")}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-950 dark:bg-white hover:bg-zinc-900 dark:hover:bg-zinc-50 text-white dark:text-zinc-950 text-xs font-bold rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all"
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-950 dark:bg-white hover:bg-zinc-900 dark:hover:bg-zinc-50 text-white dark:text-zinc-950 text-xs font-bold rounded-xl shadow-sm hover:shadow-md cursor-pointer transition-all shrink-0 animate-in fade-in"
           >
-            <Plus size={16} />
-            <span>Add New Link</span>
+            {showForm ? (
+              <>
+                <X size={16} />
+                <span>Cancel</span>
+              </>
+            ) : (
+              <>
+                <Plus size={16} />
+                <span>Add New Link</span>
+              </>
+            )}
           </button>
         </div>
+
+        {/* --- MODULAR LINK CREATION FORM --- */}
+        {showForm && (
+          <CreateLinkForm 
+            onSuccess={(newLink) => {
+              // Append the newly created link directly to our state list so it displays instantly!
+              setLinks((prev) => [...prev, newLink]);
+              // Close the form panel
+              setShowForm(false);
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        )}
 
         {/* Links Grid List */}
         {links.length > 0 ? (
@@ -123,11 +149,11 @@ export default function DashboardLinksPage() {
             {links.map((link) => (
               <div 
                 key={link.id} 
-                className="group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300"
+                className="group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
               >
                 <div className="flex items-center gap-4 min-w-0">
                   {/* Left Side: Drag/Icon Placeholder */}
-                  <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-505 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-zinc-55 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-505 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors">
                     <Link2 size={18} />
                   </div>
                   
@@ -155,7 +181,7 @@ export default function DashboardLinksPage() {
                   </div>
                 </div>
 
-                {/* Right Side: Active toggle or badge display */}
+                {/* Right Side: Order parameter */}
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
                     Order {link.order}
@@ -166,7 +192,7 @@ export default function DashboardLinksPage() {
           </div>
         ) : (
           /* Empty state view styled in clean modern aesthetics */
-          <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/5 p-12 text-center max-w-md mx-auto space-y-4">
+          <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/5 p-12 text-center max-w-md mx-auto space-y-4 animate-in fade-in duration-300">
             <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 flex items-center justify-center mx-auto border border-zinc-200 dark:border-zinc-800">
               <Link2 size={24} />
             </div>
@@ -176,15 +202,15 @@ export default function DashboardLinksPage() {
                 No Links Found
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed px-4">
-                You haven't registered any social links yet! Click the button above to add your first portfolio shortcut.
+                You haven't registered any social links yet! Open the creation panel to register your first shortcut.
               </p>
             </div>
             
             <button 
-              onClick={() => toast.info("Link creation will be enabled in Phase 2!")}
+              onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-1.5 px-4 py-2 border border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-850 rounded-xl text-xs font-bold text-zinc-900 dark:text-white cursor-pointer transition-colors"
             >
-              <Sparkles size={14} className="text-amber-500" />
+              <Sparkles size={14} className="text-amber-500 animate-pulse" />
               <span>Create First Link</span>
             </button>
           </div>
@@ -194,3 +220,5 @@ export default function DashboardLinksPage() {
     </DashboardWrapper>
   );
 }
+
+
