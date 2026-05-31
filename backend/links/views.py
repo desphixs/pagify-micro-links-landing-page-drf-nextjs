@@ -4,6 +4,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import Link
 from .serializers import LinkSerializer
+from django.contrib.auth import get_user_model
+from userauths.serializers import UserProfileSerializer
+User = get_user_model()
 
 class LinkListCreateView(APIView):
     """
@@ -286,6 +289,70 @@ class LinkReorderView(APIView):
         # Step 5: Serialize the reordered links and return them with 200 OK status
         serializer = LinkSerializer(updated_links, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+class PublicProfileView(APIView):
+    """
+    THE PUBLIC PROFILE VIEW
+    
+    Analogy:
+    Think of this View like a public showcase window for a creator's workshop.
+    Anyone walking down the street (a guest visitor) can look through the window (dynamic URL)
+    by reading the creator's username label (e.g. sarah).
+    1. The window bouncer looks up the master ledger to see if a user exists whose email starts with 'sarah@'.
+    2. If no matching user is found, the bouncer displays a 'Closed' sign (HTTP 404 Not Found).
+    3. If the user exists, we check if they have turned on their 'Public visibility' switch. If they have set
+       it to False (private), we treat it as missing and return a 404.
+    4. If it's public, we pull only their active, visible links sorted by display order and present them!
+    """
+    # This is a public profile endpoint, so we do NOT require authentication!
+    permission_classes = []
+
+    def get(self, request, username):
+        """
+        Handles incoming GET requests to view a creator's dynamic public profile.
+        Accepts the username parameter parsed from the URL path.
+        """
+        # Step 1: Query the custom User model by matching the email prefix to the username.
+        # Since User uses email as its primary identifier, the email prefix represents the username.
+        user = User.objects.filter(email__istartswith=f"{username}@").first()
+
+        # Step 2: If the user is None (not found), return a 404 response immediately
+        if user is None:
+            return Response(
+                {"error": "Profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Step 3: Check visibility toggles. If the user's profile visibility is set to False, return a 404.
+        # This keeps the profile completely secure and private from the public web!
+        if not hasattr(user, 'profile') or not user.profile.public_profile:
+            return Response(
+                {"error": "Profile not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Step 4: Query only the visible active links belonging to this creator.
+        # We sort them explicitly using .order_by("order") to match their display order indices!
+        links = Link.objects.filter(user=user, is_active=True).order_by("order")
+
+        # Step 5: Extract the username slug from the email prefix to return to the frontend
+        username_val = user.email.split('@')[0]
+
+        # Step 6: Serialize the user profile and their links separately, and return both in a single response!
+        user_serializer = UserProfileSerializer(user)
+        links_serializer = LinkSerializer(links, many=True)
+
+        response_payload = {
+            "username": username_val,
+            "user": user_serializer.data,
+            "links": links_serializer.data
+        }
+
+        return Response(response_payload, status=status.HTTP_200_OK)
+
 
 
 

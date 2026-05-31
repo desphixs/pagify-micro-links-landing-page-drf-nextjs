@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import LinkListCreateView, LinkDetailView, LinkReorderView
+from .views import LinkListCreateView, LinkDetailView, LinkReorderView, PublicProfileView
 
 # We set the namespace for this URL configuration.
 # This makes it easy to reverse reference URLs in Python if needed (e.g. reverse('links:link-list')).
@@ -16,12 +16,17 @@ urlpatterns = [
     # This endpoint receives ordered lists of IDs and updates their DB display orders.
     path("links/reorder/", LinkReorderView.as_view(), name="link-reorder"),
 
+    # We map the URL path "profile/<str:username>/" to our PublicProfileView.
+    # This dynamic URL allows any guest visitor to browse a creator's public profile and links.
+    path("profile/<str:username>/", PublicProfileView.as_view(), name="public-profile"),
+
     # We map the URL path "links/<int:pk>/" to our LinkDetailView.
     # The <int:pk> part is a Django path converter that extracts the integer from the URL and passes it as "pk".
     # This single path handles GET (retrieve detail), PUT (update fields), and DELETE (remove row)!
     # We give it a friendly name "link-detail" so we can refer to it easily in our tests and actions.
     path("links/<int:pk>/", LinkDetailView.as_view(), name="link-detail"),
 ]
+
 
 
 
