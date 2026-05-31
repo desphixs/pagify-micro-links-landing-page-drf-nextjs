@@ -210,6 +210,49 @@ export async function reorderLinksAction(orderedIds: number[]) {
     }
 }
 
+/**
+ * GET PUBLIC PROFILE ACTION
+ * 
+ * Analogy:
+ * Think of this action like a public tour guide. 
+ * Anyone on the internet can ask the tour guide to visit the public showcase of a creator (using their username slug).
+ * The tour guide walks over to the Django database public gate (`/profile/{username}/`), 
+ * checks if the creator exists and is public, and safely retrieves their display name, bio, avatar, and active links!
+ * Since it is public, this action runs without requiring the visitor to be logged in.
+ */
+export async function getPublicProfileAction(username: string) {
+    try {
+        // Dispatch a public GET request to our Django public profile endpoint.
+        // We use skipRedirectOn401: true so that if a guest visitor accesses the page, 
+        // they are never redirected to the login screen, since this route is fully public!
+        const { ok, status, data } = await apiFetch(`/profile/${username}/`, {
+            method: 'GET',
+            cache: 'no-store', // Disable caching so visitors always see the creator's latest live links
+            skipRedirectOn401: true,
+        });
+
+        if (ok) {
+            return {
+                success: true,
+                message: "Public profile retrieved successfully.",
+                profile: data,
+            };
+        } else {
+            return {
+                success: false,
+                status: status,
+                message: data.error || data.detail || data.message || "Failed to retrieve public profile.",
+            };
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: `Network error: ${error.message || 'Failed to connect to backend server.'}`,
+        };
+    }
+}
+
+
 
 
 

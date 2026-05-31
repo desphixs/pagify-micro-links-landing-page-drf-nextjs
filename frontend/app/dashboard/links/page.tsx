@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardWrapper from '@/components/dashboard/DashboardWrapper';
-import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2, Pencil, GripVertical } from 'lucide-react';
+import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2, Pencil, GripVertical, Copy, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { getLinksAction, deleteLinkAction, reorderLinksAction } from '@/app/actions/links/links';
+import { getUserProfileAction } from '@/app/actions/userauths/profile';
 import CreateLinkForm from '@/components/dashboard/CreateLinkForm';
 import EditLinkForm from '@/components/dashboard/EditLinkForm';
 
@@ -45,6 +46,20 @@ export default function DashboardLinksPage() {
 
   // Tracks which list index is actively being dragged (for HTML5 drag-and-drop sorting)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // State hook to store the username slug parsed from user profile details
+  const [username, setUsername] = useState<string>('');
+
+  // Copies the creator's live public profile URL to the browser's clipboard
+  const handleCopyProfileLink = () => {
+    if (!username) {
+      toast.error("Profile link not ready yet. Please wait.");
+      return;
+    }
+    const publicUrl = `${window.location.origin}/${username}`;
+    navigator.clipboard.writeText(publicUrl);
+    toast.success("Profile link successfully copied to clipboard!");
+  };
 
   // Triggered when the user starts dragging a card
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -118,6 +133,19 @@ export default function DashboardLinksPage() {
       setIsLoading(true);
       // Wait for server action response pipelines to finish loading
       await fetchUserLinks();
+
+      // Retrieve user profile details to resolve the public profile link!
+      try {
+        const profileRes = await getUserProfileAction();
+        if (profileRes.success && profileRes.user?.email) {
+          const userEmail = profileRes.user.email;
+          const userSlug = userEmail.split('@')[0];
+          setUsername(userSlug);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile for dashboard header link:", err);
+      }
+
       setIsLoading(false);
     }
     loadData();
@@ -227,6 +255,40 @@ export default function DashboardLinksPage() {
             )}
           </button>
         </div>
+
+        {/* Profile sharing controls bar (visible when username is resolved) */}
+        {username && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/80 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              <span>Your public landing page is live at:</span>
+              <code className="px-2 py-0.5 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono text-sm">
+                /{username}
+              </code>
+            </div>
+            
+            <div className="flex items-center gap-2 sm:ml-auto">
+              <button 
+                onClick={handleCopyProfileLink}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
+              >
+                <Copy size={13} />
+                <span>Copy Link</span>
+              </button>
+              
+              <a 
+                href={`/${username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
+              >
+                <Globe size={13} />
+                <span>Visit Profile</span>
+                <ExternalLink size={11} className="text-zinc-400" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* --- MODULAR LINK CREATION FORM --- */}
         {showForm && (
