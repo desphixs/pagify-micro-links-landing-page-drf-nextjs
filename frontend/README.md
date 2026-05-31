@@ -1,126 +1,117 @@
-# Django + Next.js Boilerplate
+# Pagify: Sleek Micro-Landing Page Builder
 
-**The foundation for real world fullstack applications.**
-
-This boilerplate is a production-ready, batteries-included starter kit designed to bridge the gap between **Django’s** robust backend capabilities and **Next.js’s** unparalleled frontend performance. From comprehensive authentication flows to automated developer workflows, everything is pre-configured.
+Pagify is a premium full-stack micro-landing page application designed for content creators, artists, and developers who need a single, elegant link to house their entire digital world. Built using a decoupled architecture with **Django (Django REST Framework)** on the backend and **Next.js** on the frontend, it demonstrates how to handle custom relational APIs, dynamic URL routing, and seamless frontend state updates out of the box.
 
 ---
 
-## Key Features
+## 🚀 The Core Experience
 
-### 🔐 Advanced Authentication System
+Imagine having one beautiful link that represents your entire online persona. With Pagify:
+* **Creator Dashboard:** Authenticated creators can view, add, and delete links dynamically on a protected dashboard.
+* **Boilerplate Integration:** Reuses the starter kit's built-in `Profile` system to display creator bios, avatar pictures, and respect global user settings (like toggling a profile between public and private).
+* **Next.js Dynamic Routing:** Anyone can visit `http://localhost:3000/[username]` to see a creator's public micro-landing page immediately, rendered dynamically.
+* **Custom REST APIs:** Pure custom-built DRF views ensure exact queries, clean error states (like returning a proper 404 if a user profile doesn't exist), and secure permission boundaries.
 
-A complete, secure, and flexible auth system out of the box:
+---
 
-- **Traditional:** Email & Password login with robust validation.
-- **Social Auth:** Seamless integration with **GitHub** and **Google**.
-- **Passwordless:** Magic Link and OTP (One-Time Password) login support.
-- **Security:** Password reset and password change workflows pre-built.
-- **Account Management:** Profile updates, account settings, and avatar management.
+## 🛠️ Architecture & Relationship Flow
 
-### 🎨 Frontend & UI/UX
+To keep the application highly scalable and clean, Pagify adopts a robust relational database structure. Instead of duplicating profile information, Pagify relies on a flat, interconnected design:
 
-- **Next.js Architecture:** Optimized for speed and SEO.
-- **Auth Context:** Global authentication state management.
-- **Theming:** Full **Dark/Light Mode** support powered by Tailwind CSS.
-- **Responsive Design:** Fully mobile-responsive profile and settings pages.
+* **Identity Layer:** Supported by the boilerplate's pre-built `User` and `Profile` models (accessible as `user.profile`), managing the creator's username, biography, and avatar.
+* **Content Layer:** Controlled by our custom `Link` model, which establishes a many-to-one relationship back to the `User`.
 
-### ⚙️ Backend & Infrastructure
+```mermaid
+graph TD
+    User["User Model (auth)"] -- "One-to-One" --> Profile["Profile Model (avatar, bio, public_profile)"]
+    User -- "One-to-Many" --> Link["Link Model (title, url, order, is_active)"]
+```
 
-- **Django Core:** Clean architecture with a focus on scalability.
-- **Email System:** Fully wired-in SMTP configuration for transactional emails (Reset links, OTPs, etc.).
-- **API Ready:** Structured to communicate effortlessly with the Next.js frontend.
-
-### 🛠️ Developer Experience (DX)
-
-Custom automation scripts to speed up your workflow:
-
-- `g.bat`: Automated GitHub commit and push workflow.
-- `menu.bat`: A custom CLI menu to manage Django commands (Runserver, Migrations, Shell, etc.).
+Whenever a dynamic frontend route (like `/[username]`) is hit:
+1. The frontend extracts the username from the URL dynamic path.
+2. The backend validates the username, grabs their biography/avatar details, and pulls all their active links sorted by order.
+3. The frontend displays the page in a clean, mobile-first design using Tailwind CSS.
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer        | Technology                       |
-| ------------ | -------------------------------- |
-| **Backend**  | Django                           |
-| **Frontend** | Next.js, React                   |
-| **Styling**  | Tailwind CSS                     |
-| **Database** | PostgreSQL (or SQLite for local) |
-| **State**    | React Context API                |
-| **Scripts**  | Batch (.bat) for Windows         |
+| Layer | Technology | Key Usage |
+|---|---|---|
+| **Backend** | Django & DRF | API handling, explicit SQL/ORM queries, custom REST view routing |
+| **Frontend** | Next.js & React | Dynamic routing, custom pages, responsive rendering |
+| **Styling** | Tailwind CSS | Sleek premium light/dark components, mobile-first cards |
+| **Database** | SQLite | Local relational storage, structured tables |
+| **State** | React Context & Hooks | Local client-side tracking, forms validation |
 
 ---
 
-## 🚀 Getting Started
-
-### 1. Clone the repository
+## 📁 Key Directories
 
 ```bash
-git clone https://github.com/desphixs/Staqed-Django-and-Next.js-Boilerplate
-cd your-repo-name
-
+pagify/
+├── backend/                # Django REST API Backend
+│   ├── links/             # Custom Django app for Pagify links
+│   │   ├── models.py      # New Link model
+│   │   ├── views.py       # Custom REST APIViews
+│   │   ├── serializers.py # Explicit serializers
+│   │   └── urls.py        # API endpoints
+│   └── userauths/         # Pre-built Authentication & Profiles
+└── frontend/               # Next.js Frontend
+    └── app/
+        ├── dashboard/
+        │   └── links/     # Secured Link Management dashboard page
+        └── [username]/    # Dynamic Public Profile router page
 ```
-
-### 2. Backend Setup
-
-1. Create a virtual environment: `python -m venv venv`
-2. Activate it: `venv\Scripts\activate`
-3. Install dependencies: `pip install -r requirements.txt`
-4. Configure your `.env` file (see `.env.template`).
-5. Run migrations: `python manage.py migrate`
-
-### 3. Frontend Setup
-
-1. Navigate to the frontend folder: `cd frontend`
-2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
 
 ---
 
-## ⌨️ Automation Scripts
+## 🎯 Developer Implementation Roadmap
 
-This boilerplate includes custom Windows batch scripts to streamline your development:
+The project is structured into three highly focused phases, following a strict **Vertical Slicing** methodology:
 
-### **The Django Menu**
+### Phase 1: The Foundation
+* **Initialize Stack:** Get the boilerplate servers connected and verified.
+* **Create Links App:** Design and migrate the custom `Link` model, register it in the Django Admin portal, and seed it with dummy links from the Python interactive shell.
+* **Create Dashboard API:** Build the GET view to retrieve links for the currently authenticated developer.
+* **Create Frontend List:** Render a styled grid of links in the creator's dashboard, displaying loading screens and empty states.
 
-Instead of remembering long commands, run:
+### Phase 2: Link Management
+* **Build Create Endpoint:** Implement a POST view to accept, validate, and create links.
+* **Next.js Creation:** Add an interactive modal/inline form to add links and optimistically append them to the UI list without a page refresh.
+* **Build Delete Endpoint:** Set up a secure DELETE view validating ownership.
+* **Next.js Deletion:** Wire up trash buttons to remove link items instantly from the viewport.
 
+### Phase 3: The Public Profile
+* **Build Public API:** Build the `/api/profile/<str:username>/` public endpoint that returns user identity metadata and active links or a 404 if not found.
+* **Dynamic Next.js Route:** Implement the `/[username]/page.tsx` dynamic folder route.
+* **Assemble Public Landing Page:** Fetch from the public endpoint and layout a beautiful, centered, premium mobile-first landing page.
+
+---
+
+## 🚦 Getting Started
+
+### 1. Run the Backend (Django)
 ```bash
-.\menu.bat
+cd backend
+python -m venv venv
+# Activate virtual environment
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # macOS/Linux
 
+# Install packages & run migrations
+pip install -r requirements.txt
+python manage.py migrate
+
+# Boot Django server
+python manage.py runserver
 ```
 
-_Gives you quick access to migrations, superuser creation, and starting the server._
-
-### **One-Click Commits**
-
-To push your changes to GitHub instantly:
-
+### 2. Run the Frontend (Next.js)
 ```bash
-.\g.bat "Your commit message here"
-
+cd frontend
+npm install
+npm run dev
 ```
 
-## 📝 Versioning
-
-**Current Version:** `1.0.0` (Initial Release)
-
----
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
-
-## 📄 License
-
-This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
-
----
-
-**Built with ❤️ for developers who want to move fast**
-
----
-
-**Sponsored by [Staqed](https://staqed.com)**
+Open `http://localhost:3000` to start building!
