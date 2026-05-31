@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardWrapper from '@/components/dashboard/DashboardWrapper';
-import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2 } from 'lucide-react';
+import { Link2, ExternalLink, Plus, Sparkles, X, Trash2, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { getLinksAction, deleteLinkAction } from '@/app/actions/links/links';
 import CreateLinkForm from '@/components/dashboard/CreateLinkForm';
+import EditLinkForm from '@/components/dashboard/EditLinkForm';
 
 // Define the shape of our Link data structure returned by the API
 interface LinkData {
@@ -24,6 +25,7 @@ interface LinkData {
  * Think of this page like a personal control deck where a musician manages their active amplifiers.
  * Each card represents a plugged-in speaker (a social link) sending their sound (traffic) to the crowd.
  * You can see at a single glance which links are connected, where they point, and which ones are actively broadcasting!
+ * We have upgraded the deck to allow modular, hot-swappable tuning plug-ins (EditLinkForm) to edit speaker settings inline.
  */
 export default function DashboardLinksPage() {
   // State hook to store the array of social links returned by our server action
@@ -37,6 +39,9 @@ export default function DashboardLinksPage() {
 
   // Tracks which link ID is actively undergoing backend deletion (to show spinning trash cans!)
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  // Tracks which link ID is actively being edited inline (null means no link is being edited)
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   // Asynchronous method to handshake with our Next.js Server Action to list links
   const fetchUserLinks = async () => {
@@ -67,6 +72,16 @@ export default function DashboardLinksPage() {
     }
     loadData();
   }, []);
+
+  // Sets the active editing ID to reveal the modular inline edit form
+  const handleEditStart = (linkId: number) => {
+    setEditingId(linkId);
+  };
+
+  // Clears the active editing ID to collapse the edit form
+  const handleEditCancel = () => {
+    setEditingId(null);
+  };
 
   // Deletion handler to submit data securely using our Server Action
   const handleDeleteLinkSubmit = async (linkId: number) => {
@@ -180,66 +195,94 @@ export default function DashboardLinksPage() {
         {links.length > 0 ? (
           <div className="space-y-4">
             {links.map((link) => (
-              <div 
-                key={link.id} 
-                className="group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  {/* Left Side: Drag/Icon Placeholder */}
-                  <div className="w-10 h-10 rounded-xl bg-zinc-55 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-505 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors">
-                    <Link2 size={18} />
-                  </div>
-                  
-                  {/* Link Text Context */}
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-zinc-950 dark:text-white truncate">
-                        {link.title}
-                      </h3>
-                      {!link.is_active && (
-                        <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-850 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          Hidden
-                        </span>
-                      )}
+              editingId === link.id ? (
+                /* --- MODULAR INLINE EDIT FORM COMPONENT --- */
+                <EditLinkForm
+                  key={link.id}
+                  link={link}
+                  onSuccess={(updatedLink) => {
+                    // Update the item in the local list array state instantly!
+                    setLinks((prev) =>
+                      prev.map((l) => (l.id === link.id ? updatedLink : l))
+                    );
+                    // Collapse the editing form mode
+                    handleEditCancel();
+                  }}
+                  onCancel={handleEditCancel}
+                />
+              ) : (
+                /* --- DEFAULT SOCIAL CARD RENDERING --- */
+                <div 
+                  key={link.id} 
+                  className="group relative rounded-2xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-900/20 p-5 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-800 hover:shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-2"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    {/* Left Side: Drag/Icon Placeholder */}
+                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 flex items-center justify-center group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800/80 transition-colors">
+                      <Link2 size={18} />
                     </div>
-                    <a 
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-zinc-555 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 hover:underline truncate"
+                    
+                    {/* Link Text Context */}
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-zinc-950 dark:text-white truncate">
+                          {link.title}
+                        </h3>
+                        {!link.is_active && (
+                          <span className="text-[9px] font-bold text-zinc-450 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-850 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Hidden
+                          </span>
+                        )}
+                      </div>
+                      <a 
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white flex items-center gap-1 hover:underline truncate"
+                      >
+                        <span className="truncate">{link.url}</span>
+                        <ExternalLink size={10} className="shrink-0" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Order parameter, Edit Button, and Delete Button */}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800/80 px-2 py-1 rounded-lg">
+                      Order {link.order}
+                    </span>
+
+                    {/* Inline Edit Button Trigger */}
+                    <button
+                      onClick={() => handleEditStart(link.id)}
+                      disabled={deletingId !== null || editingId !== null}
+                      className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer disabled:opacity-50"
+                      title="Edit Link"
                     >
-                      <span className="truncate">{link.url}</span>
-                      <ExternalLink size={10} className="shrink-0" />
-                    </a>
+                      <Pencil size={16} />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteLinkSubmit(link.id)}
+                      disabled={deletingId !== null || editingId !== null}
+                      className="p-2 rounded-xl text-zinc-400 hover:text-red-650 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-all cursor-pointer disabled:opacity-50"
+                      title="Delete Link"
+                    >
+                      {deletingId === link.id ? (
+                        <Loader2 size={16} className="animate-spin text-red-600 dark:text-red-400" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
                   </div>
                 </div>
-
-                {/* Right Side: Order parameter and Delete Button */}
-                <div className="flex items-center gap-4 shrink-0">
-                  <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800/80 px-2 py-1 rounded-lg">
-                    Order {link.order}
-                  </span>
-
-                  <button
-                    onClick={() => handleDeleteLinkSubmit(link.id)}
-                    disabled={deletingId !== null}
-                    className="p-2 rounded-xl text-zinc-400 hover:text-red-650 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/10 transition-all cursor-pointer disabled:opacity-50"
-                    title="Delete Link"
-                  >
-                    {deletingId === link.id ? (
-                      <Loader2 size={16} className="animate-spin text-red-600 dark:text-red-400" />
-                    ) : (
-                      <Trash2 size={16} />
-                    )}
-                  </button>
-                </div>
-              </div>
+              )
             ))}
           </div>
         ) : (
           /* Empty state view styled in clean modern aesthetics */
-          <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/5 p-12 text-center max-w-md mx-auto space-y-4 animate-in fade-in duration-300">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-505 flex items-center justify-center mx-auto border border-zinc-200 dark:border-zinc-800">
+          <div className="rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-805 bg-zinc-50/50 dark:bg-zinc-900/5 p-12 text-center max-w-md mx-auto space-y-4 animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 flex items-center justify-center mx-auto border border-zinc-200 dark:border-zinc-800">
               <Link2 size={24} />
             </div>
             
@@ -266,6 +309,3 @@ export default function DashboardLinksPage() {
     </DashboardWrapper>
   );
 }
-
-
-

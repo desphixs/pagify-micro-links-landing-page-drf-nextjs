@@ -94,8 +94,9 @@ export async function createLinkAction(title: string, url: string, order?: numbe
  */
 export async function deleteLinkAction(linkId: number) {
     try {
-        // Dispatch a secure DELETE request to our Django `/links/<pk>/delete/` endpoint.
-        const { ok, data } = await apiFetch(`/links/${linkId}/delete/`, {
+        // Dispatch a secure DELETE request to our unified Django `/links/<pk>/` endpoint.
+        // apiFetch will automatically handle reading the HttpOnly cookie and appending the Bearer token!
+        const { ok, data } = await apiFetch(`/links/${linkId}/`, {
             method: 'DELETE',
         });
 
@@ -117,5 +118,59 @@ export async function deleteLinkAction(linkId: number) {
         };
     }
 }
+
+/**
+ * UPDATE USER LINK ACTION
+ * 
+ * Analogy:
+ * Think of this action like visiting the secure vault service counter to update a folder's documents.
+ * You present your key card (JWT Token), hand the clerk a list of modifications (new Title, URL, sorting Order, or visibility switch),
+ * and the clerk modifies the specific file (linkId) on the spot, handing you back the fresh updated folder.
+ */
+export async function updateLinkAction(
+    linkId: number,
+    title: string,
+    url: string,
+    order: number,
+    isActive: boolean
+) {
+    try {
+        // Construct the body payload containing updated details to send to the backend.
+        // We match the fields Django expects: title, url, order, and is_active.
+        const bodyPayload = {
+            title: title.trim(),
+            url: url.trim(),
+            order: order,
+            is_active: isActive,
+        };
+
+        // Dispatch a secure PUT request to our unified RESTful Django endpoint: `/links/<pk>/`
+        // apiFetch automatically fetches cookie credentials and appends Bearer authorization!
+        const { ok, data } = await apiFetch(`/links/${linkId}/`, {
+            method: 'PUT',
+            body: bodyPayload,
+        });
+
+        if (ok) {
+            return {
+                success: true,
+                message: "Link updated successfully.",
+                link: data, // Return the newly updated link row object
+            };
+        } else {
+            return {
+                success: false,
+                // Check if the backend returned a custom manual validation error (like empty fields)
+                message: data.error || data.detail || data.message || "Failed to update link.",
+            };
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: `Network error: ${error.message || 'Failed to connect to backend server.'}`,
+        };
+    }
+}
+
 
 
