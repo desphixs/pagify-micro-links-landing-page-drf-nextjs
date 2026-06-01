@@ -15,7 +15,7 @@ export default function Logo() {
     return (
         <Link href="/" className="flex items-center gap-2 group">
             {/* Brand title text with tight tracking and bold design */}
-            <span className="text-xl font-bold tracking-tight text-black dark:text-white">AuthForge</span>
+            <span className="text-xl font-bold tracking-tight text-black dark:text-white">Pagify</span>
         </Link>
     );
 }

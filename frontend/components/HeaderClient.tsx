@@ -30,12 +30,6 @@ interface NavigationItem {
 // Adding, removing, or renaming a dish (link) here instantly updates it everywhere!
 const NAVIGATION_LINKS: NavigationItem[] = [
     {
-        label: "API Documentation",
-        href: "http://127.0.0.1:8000/api/docs/",
-        icon: BookOpen,
-        isExternal: true,
-    },
-    {
         label: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
@@ -205,7 +199,7 @@ export default function HeaderClient({ session }: HeaderClientProps) {
                                 <LogIn className="w-3.5 h-3.5 mr-1.5" />
                                 Sign In
                             </Link>
-                            <Link href="/register" className="h-10 px-5 rounded-xl bg-zinc-950 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-950 font-semibold text-xs transition-all duration-200 flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer">
+                            <Link href="/register" className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-800 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white dark:text-white font-semibold text-xs transition-all duration-200 flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer">
                                 <UserPlus className="w-3.5 h-3.5" />
                                 Sign Up
                             </Link>
